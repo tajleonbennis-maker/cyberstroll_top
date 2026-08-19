@@ -1,0 +1,5 @@
+flask>=3.0
+geopy>=2.4
+chart.js>=4.4  # via CDN, not pip
+# 系统依赖（需 apt 安装）:
+# libgeoip-dev / geoip-bin (for GeoIP lookup)

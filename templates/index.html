@@ -1,0 +1,924 @@
+"""CyberStroll Top - 攻防演练靶机仪表板"""
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberStroll Top - 靶机监控仪表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: #1a2235;
+            --border-color: #2a3548;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --accent-cyan: #00d4ff;
+            --accent-purple: #a855f7;
+            --accent-red: #ef4444;
+            --accent-orange: #f97316;
+            --accent-green: #10b981;
+            --accent-yellow: #eab308;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 背景动画 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(0,212,255,0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(168,85,247,0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(239,68,68,0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            background: linear-gradient(135deg, rgba(0,212,255,0.1) 0%, rgba(168,85,247,0.1) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0,212,255,0.3); }
+            50% { box-shadow: 0 0 35px rgba(168,85,247,0.4); }
+        }
+
+        .logo h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: blink 2s infinite;
+        }
+
+        .status-dot.online { background: var(--accent-green); box-shadow: 0 0 10px var(--accent-green); }
+        .status-dot.warning { background: var(--accent-yellow); box-shadow: 0 0 10px var(--accent-yellow); }
+        .status-dot.danger { background: var(--accent-red); box-shadow: 0 0 10px var(--accent-red); }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-cyan);
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--card-accent, var(--accent-cyan)), transparent);
+        }
+
+        .stat-card.cyan { --card-accent: var(--accent-cyan); }
+        .stat-card.purple { --card-accent: var(--accent-purple); }
+        .stat-card.red { --card-accent: var(--accent-red); }
+        .stat-card.orange { --card-accent: var(--accent-orange); }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 2.4rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .stat-card.cyan .stat-value { color: var(--accent-cyan); }
+        .stat-card.purple .stat-value { color: var(--accent-purple); }
+        .stat-card.red .stat-value { color: var(--accent-red); }
+        .stat-card.orange .stat-value { color: var(--accent-orange); }
+
+        .stat-change {
+            font-size: 0.75rem;
+            margin-top: 8px;
+            color: var(--text-secondary);
+        }
+
+        .stat-change.up { color: var(--accent-red); }
+        .stat-change.down { color: var(--accent-green); }
+
+        /* 主内容区 */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.2);
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title .icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* 图表容器 */
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* 攻击列表 */
+        .attack-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .attack-list::-webkit-scrollbar { width: 6px; }
+        .attack-list::-webkit-scrollbar-track { background: transparent; }
+        .attack-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+        .attack-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(42,53,72,0.5);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .attack-item:last-child { border-bottom: none; }
+
+        .attack-severity {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+
+        .severity-high { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+        .severity-medium { background: var(--accent-orange); box-shadow: 0 0 8px var(--accent-orange); }
+        .severity-low { background: var(--accent-yellow); }
+
+        .attack-info { flex: 1; min-width: 0; }
+
+        .attack-ip {
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            cursor: pointer;
+        }
+
+        .attack-ip:hover { text-decoration: underline; }
+
+        .attack-detail {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .attack-time {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .attack-type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-sql_injection { background: rgba(239,68,68,0.2); color: var(--accent-red); }
+        .badge-xss { background: rgba(239,68,68,0.2); color: var(--accent-red); }
+        .badge-path_traversal { background: rgba(249,115,22,0.2); color: var(--accent-orange); }
+        .badge-port_scan { background: rgba(249,115,22,0.2); color: var(--accent-orange); }
+        .badge-ssh_brute_force { background: rgba(239,68,68,0.2); color: var(--accent-red); }
+        .badge-scanner_fingerprint { background: rgba(16,185,129,0.2); color: var(--accent-green); }
+        .badge-sensitive_file { background: rgba(249,115,22,0.2); color: var(--accent-orange); }
+        .badge-suspicious_request { background: rgba(148,163,184,0.2); color: var(--text-secondary); }
+        .badge-ssh_connection { background: rgba(16,185,129,0.2); color: var(--accent-green); }
+        .badge-cmd_injection { background: rgba(239,68,68,0.2); color: var(--accent-red); }
+
+        /* TOP 攻击者 */
+        .attacker-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .attacker-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(42,53,72,0.5);
+        }
+
+        .attacker-item:last-child { border-bottom: none; }
+
+        .attacker-rank {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .rank-1 { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #000; }
+        .rank-2 { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); color: #000; }
+        .rank-3 { background: linear-gradient(135deg, #cd7f32, #a06228); color: #fff; }
+        .rank-other { background: var(--bg-secondary); color: var(--text-secondary); }
+
+        .attacker-info { flex: 1; min-width: 0; }
+
+        .attacker-ip {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+
+        .attacker-types {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+        }
+
+        .attacker-count {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            min-width: 45px;
+            text-align: right;
+        }
+
+        /* 底部网格 */
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* 实时攻击流 */
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--accent-red);
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-red);
+            border-radius: 50%;
+            animation: livePulse 1s infinite;
+        }
+
+        @keyframes livePulse {
+            0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); }
+            70% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+            100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+        }
+
+        /* 响应式 */
+        @media (max-width: 1200px) {
+            .main-grid { grid-template-columns: 1fr; }
+            .bottom-grid { grid-template-columns: 1fr; }
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 12px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon">🛡️</div>
+            <div>
+                <h1>CyberStroll Top</h1>
+                <div class="subtitle">Honeypot Attack Monitor</div>
+            </div>
+        </div>
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-dot online"></span>
+                <span>系统在线</span>
+            </div>
+            <div class="status-item" id="uptime">运行时间: --</div>
+            <div class="status-item" id="clock">--:--:--</div>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-grid">
+        <div class="stat-card cyan">
+            <div class="stat-label">总攻击次数</div>
+            <div class="stat-value" id="total-attacks">--</div>
+            <div class="stat-change" id="total-change">历史累计</div>
+        </div>
+        <div class="stat-card purple">
+            <div class="stat-label">独立攻击 IP</div>
+            <div class="stat-value" id="unique-ips">--</div>
+            <div class="stat-change" id="ips-change">--</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-label">高危攻击</div>
+            <div class="stat-value" id="high-severity">--</div>
+            <div class="stat-change">SQL注入 / XSS / RCE</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-label">今日新增</div>
+            <div class="stat-value" id="today-count">--</div>
+            <div class="stat-change" id="today-change">过去 24 小时</div>
+        </div>
+    </div>
+
+    <!-- 主内容 -->
+    <div class="main-grid">
+        <!-- 左侧：图表 + 时间线 -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
+            <!-- 攻击类型分布 -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title"><span class="icon"></span>攻击类型分布</span>
+                    <span class="live-indicator"><span class="live-dot"></span>LIVE</span>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="typeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 攻击时间线 -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title"><span class="icon"></span>24小时攻击时间线</span>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：实时攻击流 + TOP 攻击者 -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
+            <!-- 实时攻击流 -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title"><span class="icon" style="background:var(--accent-red)"></span>实时攻击流</span>
+                    <span class="live-indicator"><span class="live-dot"></span>实时更新</span>
+                </div>
+                <div class="card-body" style="padding:12px 20px;">
+                    <div class="attack-list" id="attack-list">
+                        <div class="empty-state">
+                            <div class="icon">📡</div>
+                            <div>等待攻击数据...</div>
+                            <div style="margin-top:8px;font-size:0.8rem;">靶机上线后自动捕获</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOP 攻击者 -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title"><span class="icon" style="background:var(--accent-purple)"></span>TOP 攻击者</span>
+                </div>
+                <div class="card-body" style="padding:12px 20px;">
+                    <div class="attacker-list" id="attacker-list">
+                        <div class="empty-state">
+                            <div class="icon">🎯</div>
+                            <div>暂无数据</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部：严重程度分布 -->
+    <div class="bottom-grid">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><span class="icon" style="background:var(--accent-orange)"></span>严重程度分布</span>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="severityChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><span class="icon" style="background:var(--accent-green)"></span>攻击方法分布</span>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="methodChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== 全局状态 =====
+const state = {
+    attacks: [],
+    attackers: [],
+    stats: null,
+    charts: {},
+    startTime: Date.now(),
+    updateInterval: null,
+};
+
+// ===== 颜色配置 =====
+const COLORS = {
+    type: {
+        sql_injection: '#ef4444',
+        xss: '#ef4444',
+        path_traversal: '#f97316',
+        port_scan: '#f97316',
+        ssh_brute_force: '#ef4444',
+        scanner_fingerprint: '#10b981',
+        sensitive_file: '#f97316',
+        suspicious_request: '#94a3b8',
+        ssh_connection: '#10b981',
+        cmd_injection: '#ef4444',
+        unknown: '#64748b',
+    },
+    severity: {
+        high: '#ef4444',
+        medium: '#f97316',
+        low: '#eab308',
+        unknown: '#64748b',
+    },
+    method: {
+        GET: '#00d4ff',
+        POST: '#a855f7',
+        PUT: '#10b981',
+        DELETE: '#ef4444',
+        OPTIONS: '#94a3b8',
+        SSH: '#f97316',
+    },
+};
+
+const TYPE_LABELS = {
+    sql_injection: 'SQL 注入',
+    xss: 'XSS 攻击',
+    path_traversal: '路径遍历',
+    port_scan: '端口扫描',
+    ssh_brute_force: 'SSH 暴力破解',
+    scanner_fingerprint: '扫描器指纹',
+    sensitive_file: '敏感文件访问',
+    suspicious_request: '可疑请求',
+    ssh_connection: 'SSH 连接',
+    cmd_injection: '命令注入',
+    unknown: '未知',
+};
+
+const SEVERITY_LABELS = { high: '高危', medium: '中危', low: '低危', unknown: '未知' };
+
+// ===== API 调用 =====
+async function fetchAPI(endpoint) {
+    try {
+        const resp = await fetch(`/api/${endpoint}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return await resp.json();
+    } catch (err) {
+        console.error(`API [${endpoint}] error:`, err);
+        return null;
+    }
+}
+
+// ===== 数据加载 =====
+async function loadAllData() {
+    const [stats, recent, attackers] = await Promise.all([
+        fetchAPI('stats'),
+        fetchAPI('recent?limit=50'),
+        fetchAPI('top-attackers?limit=15'),
+    ]);
+
+    if (stats) {
+        state.stats = stats;
+        updateStats(stats);
+        updateCharts(stats);
+    }
+
+    if (recent && recent.length) {
+        state.attacks = recent;
+        renderAttackList(recent);
+    }
+
+    if (attackers && attackers.length) {
+        state.attackers = attackers;
+        renderAttackerList(attackers);
+    }
+}
+
+// ===== 更新统计数字 =====
+function updateStats(s) {
+    animateNumber('total-attacks', s.total_attacks || 0);
+    animateNumber('unique-ips', s.unique_ips || 0);
+    animateNumber('high-severity', (s.by_severity?.high || 0) + (s.by_severity?.medium || 0));
+    animateNumber('today-count', s.total_attacks || 0);
+
+    document.getElementById('ips-change').textContent =
+        `${s.unique_ips || 0} 个独立 IP`;
+}
+
+function animateNumber(id, target) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const current = parseInt(el.textContent.replace(/,/g, '')) || 0;
+    const diff = target - current;
+    const steps = 20;
+    const stepVal = diff / steps;
+    let step = 0;
+
+    const timer = setInterval(() => {
+        step++;
+        el.textContent = Math.round(current + stepVal * step).toLocaleString();
+        if (step >= steps) {
+            clearInterval(timer);
+            el.textContent = target.toLocaleString();
+        }
+    }, 25);
+}
+
+// ===== 图表初始化与更新 =====
+function initCharts() {
+    const chartOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { labels: { color: '#94a3b8', font: { size: 11, family: "'SF Mono', monospace" } } },
+        },
+    };
+
+    // 攻击类型饼图
+    state.charts.typeChart = new Chart(
+        document.getElementById('typeChart'), {
+        type: 'doughnut',
+        data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0 }] },
+        options: {
+            ...chartOpts,
+            cutout: '65%',
+            plugins: { ...chartOpts.plugins, legend: { position: 'right', ...chartOpts.plugins.legend } },
+        },
+    });
+
+    // 时间线柱状图
+    state.charts.timelineChart = new Chart(
+        document.getElementById('timelineChart'), {
+        type: 'bar',
+        data: {
+            labels: Array.from({length: 24}, (_, i) => `${i.toString().padStart(2,'0')}:00`),
+            datasets: [{
+                label: '攻击次数',
+                data: new Array(24).fill(0),
+                backgroundColor: 'rgba(0,212,255,0.6)',
+                borderColor: '#00d4ff',
+                borderWidth: 1,
+                borderRadius: 4,
+            }],
+        },
+        options: {
+            ...chartOpts,
+            scales: {
+                x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(42,53,72,0.5)' } },
+                y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(42,53,72,0.5)' }, beginAtZero: true },
+            },
+            plugins: { legend: { display: false } },
+        },
+    });
+
+    // 严重程度
+    state.charts.severityChart = new Chart(
+        document.getElementById('severityChart'), {
+        type: 'polarArea',
+        data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
+        options: {
+            ...chartOpts,
+            plugins: { ...chartOpts.plugins, legend: { position: 'right', ...chartOpts.plugins.legend } },
+        },
+    });
+
+    // HTTP 方法
+    state.charts.methodChart = new Chart(
+        document.getElementById('methodChart'), {
+        type: 'doughnut',
+        data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0 }] },
+        options: {
+            ...chartOpts,
+            cutout: '60%',
+            plugins: { ...chartOpts.plugins, legend: { position: 'right', ...chartOpts.plugins.legend } },
+        },
+    });
+}
+
+function updateCharts(s) {
+    // 类型分布
+    if (s.by_type) {
+        const labels = Object.keys(s.by_type).map(k => TYPE_LABELS[k] || k);
+        const values = Object.values(s.by_type);
+        const colors = Object.keys(s.by_type).map(k => COLORS.type[k] || '#64748b');
+        state.charts.typeChart.data.labels = labels;
+        state.charts.typeChart.data.datasets[0].data = values;
+        state.charts.typeChart.data.datasets[0].backgroundColor = colors;
+        state.charts.typeChart.update();
+    }
+
+    // 时间线
+    if (s.timeline) {
+        const hours = Array.from({length: 24}, (_, i) => i);
+        const data = hours.map(h => s.timeline[h] || 0);
+        state.charts.timelineChart.data.datasets[0].data = data;
+        state.charts.timelineChart.update();
+    }
+
+    // 严重程度
+    if (s.by_severity) {
+        const labels = Object.keys(s.by_severity).map(k => SEVERITY_LABELS[k] || k);
+        const values = Object.values(s.by_severity);
+        const colors = Object.keys(s.by_severity).map(k => COLORS.severity[k] || '#64748b');
+        state.charts.severityChart.data.labels = labels;
+        state.charts.severityChart.data.datasets[0].data = values;
+        state.charts.severityChart.data.datasets[0].backgroundColor = colors.map(c => c + '99');
+        state.charts.severityChart.update();
+    }
+}
+
+// ===== 渲染攻击列表 =====
+function renderAttackList(attacks) {
+    const container = document.getElementById('attack-list');
+    if (!attacks || !attacks.length) {
+        container.innerHTML = `<div class="empty-state"><div class="icon">📡</div><div>等待攻击数据...</div></div>`;
+        return;
+    }
+
+    container.innerHTML = attacks.slice(0, 30).map(a => `
+        <div class="attack-item">
+            <span class="attack-severity severity-${a.attack_severity || 'low'}"></span>
+            <div class="attack-info">
+                <div>
+                    <span class="attack-ip">${escapeHtml(a.source_ip)}</span>
+                    ${a.attack_type ? `<span class="attack-type-badge badge-${a.attack_type}">${TYPE_LABELS[a.attack_type] || a.attack_type}</span>` : ''}
+                </div>
+                <div class="attack-detail">${escapeHtml((a.path || a.method || '').slice(0, 80))}</div>
+            </div>
+            <div class="attack-time">${formatTime(a.time_str || a.timestamp)}</div>
+        </div>
+    `).join('');
+}
+
+// ===== 渲染攻击者排行 =====
+function renderAttackerList(attackers) {
+    const container = document.getElementById('attacker-list');
+    if (!attackers || !attackers.length) {
+        container.innerHTML = `<div class="empty-state"><div class="icon">🎯</div><div>暂无数据</div></div>`;
+        return;
+    }
+
+    container.innerHTML = attackers.map((a, i) => {
+        const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other';
+        const types = (a.attack_types || '').split(',').filter(Boolean).slice(0, 3);
+        return `
+            <div class="attacker-item">
+                <div style="display:flex;align-items:center;">
+                    <span class="attacker-rank ${rankClass}">${i + 1}</span>
+                    <div class="attacker-info">
+                        <div class="attacker-ip">${escapeHtml(a.source_ip)}</div>
+                        <div class="attacker-types">${types.map(t => TYPE_LABELS[t] || t).join(' · ')}</div>
+                    </div>
+                </div>
+                <div class="attacker-count">${a.count?.toLocaleString()}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ===== 工具函数 =====
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function formatTime(ts) {
+    if (!ts) return '--';
+    const d = new Date(typeof ts === 'number' ? ts * 1000 : ts);
+    if (isNaN(d.getTime())) return '--';
+    const pad = n => n.toString().padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function formatUptime(ms) {
+    const s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return `${h}h ${m}m ${sec}s`;
+    if (m > 0) return `${m}m ${sec}s`;
+    return `${sec}s`;
+}
+
+// ===== 时钟 =====
+function updateClock() {
+    const now = new Date();
+    const pad = n => n.toString().padStart(2, '0');
+    document.getElementById('clock').textContent =
+        `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    document.getElementById('uptime').textContent =
+        `运行时间: ${formatUptime(Date.now() - state.startTime)}`;
+}
+
+// ===== 初始化 =====
+async function init() {
+    initCharts();
+    await loadAllData();
+
+    // 定时刷新
+    setInterval(loadAllData, 10000);  // 10秒刷新一次
+    setInterval(updateClock, 1000);
+    updateClock();
+}
+
+// 启动
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

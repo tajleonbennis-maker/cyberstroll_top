@@ -1,0 +1,30 @@
+[Unit]
+Description=CyberStroll Top Honeypot Dashboard
+Documentation=https://github.com/tajleonbennis-maker/cyberstroll_top
+After=network.target nginx.service
+Wants=nginx.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/cyberstrol
+Environment="PATH=/opt/cyberstroll/venv/bin:/usr/bin:/bin"
+Environment="DASHBOARD_PORT=8090"
+Environment="DB_PATH=/opt/cyberstroll/data/attacks.db"
+Environment="NGINX_LOG=/var/log/nginx/access.log"
+Environment="AUTH_LOG=/var/log/auth.log"
+ExecStart=/opt/cyberstroll/venv/bin/python3 /opt/cyberstroll/dashboard/server.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# 安全限制
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
