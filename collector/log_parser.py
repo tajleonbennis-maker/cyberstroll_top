@@ -80,28 +80,42 @@ class NginxLogParser(LogParser):
     # 攻击特征规则
     ATTACK_RULES = {
         "sql_injection": [
-            r"(?i)(union\s+(all\s+)?select|'\s*or\s*'|1\s*=\s*1|;\s*drop\s|"
-            r"'\s*;\s*--|exec\s*(\(|xp_)|information_schema|concat\s*\("
+            r"(?i)union\s+(all\s+)?select",
+            r"(?i)'\s*or\s*'",
+            r"(?i)1\s*=\s*1",
+            r"(?i);\s*drop\s",
+            r"(?i)'\s*;\s*--",
+            r"(?i)exec\s+xp_",
+            r"(?i)information_schema",
+            r"(?i)concat\s*\(",
         ],
         "xss": [
-            r"(?i)(<script|javascript:|onerror\s*=|onload\s*=|alert\s*\(|"
-            r"document\.cookie|eval\s*\(|expression\s*\()"
+            r"(?i)<script",
+            r"(?i)javascript:",
+            r"(?i)onerror\s*=",
+            r"(?i)onload\s*=",
+            r"(?i)alert\s*\(",
+            r"(?i)document\.cookie",
+            r"(?i)eval\s*\(",
+            r"(?i)expression\s*\(",
         ],
         "path_traversal": [
-            r"(\.\./|\.\.\\|%2e%2e|%2e/|\.\.%2f)",
-            r"(?i)(/etc/passwd|/etc/shadow|/proc/|/sys/|wp-config)",
+            r"\.\./|\.\.\\|%2e%2e|%2e/|\.\.%2f",
+            r"(?i)/etc/passwd|/etc/shadow|/proc/|/sys/|wp-config",
         ],
         "scanner_fingerprint": [
-            r"(?i)(nmap|masscan|nikto|dirbuster|gobuster|wfuzz|sqlmap|"
-            r"acunetix|nessus|openvas|burpsuite|zap|w3af|whatweb)"
+            r"(?i)nmap|masscan|nikto|dirbuster|gobuster|wfuzz|sqlmap",
+            r"(?i)acunetix|nessus|openvas|burpsuite|zap|w3af|whatweb",
         ],
         "sensitive_file": [
-            r"(?i)(\.env|\.git|\.svn|\.htaccess|\.htpasswd|wp-admin|"
-            r"phpmyadmin|admin\.php|server-status|\.DS_Store)"
+            r"(?i)\.env|\.git|\.svn|\.htaccess|\.htpasswd",
+            r"(?i)wp-admin|phpmyadmin|admin\.php|server-status|\.DS_Store",
         ],
         "cmd_injection": [
-            r"(?i)(;\s*(ls|cat|wget|curl|bash|sh|python|perl|nc|whoami)|"
-            r"\|\s*(ls|cat|wget|curl)|`[^`]+`|\$\([^)]+\))"
+            r"(?i);\s*(ls|cat|wget|curl|bash|sh|python|perl|nc)",
+            r"(?i)\|\s*(ls|cat|wget|curl)",
+            r"`[^`]+`",
+            r"\$\([^)]+\)",
         ],
     }
 
@@ -149,6 +163,11 @@ class NginxLogParser(LogParser):
         if not result["attack_type"] and int(data["status"]) >= 400:
             result["attack_type"] = "suspicious_request"
             result["attack_severity"] = "low"
+
+        # 所有访问都记录：正常访问标记为 normal_access
+        if not result["attack_type"]:
+            result["attack_type"] = "normal_access"
+            result["attack_severity"] = "info"
 
         return result
 

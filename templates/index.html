@@ -1,923 +1,592 @@
-"""CyberStroll Top - 攻防演练靶机仪表板"""
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CyberStroll Top - 靶机监控仪表板</title>
+    <title>CyberStroll Top - 你的数字指纹</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --bg-primary: #0a0e17;
             --bg-secondary: #111827;
-            --bg-card: #1a2235;
-            --border-color: #2a3548;
-            --text-primary: #e2e8f0;
-            --text-secondary: #94a3b8;
+            --bg-card: #151d2e;
+            --bg-card-hover: #1a2438;
+            --border-color: #1e2a40;
+            --border-glow: rgba(0,212,255,0.15);
+            --text-primary: #e8edf5;
+            --text-secondary: #7a8ba8;
+            --text-muted: #4a5a78;
             --accent-cyan: #00d4ff;
-            --accent-purple: #a855f7;
-            --accent-red: #ef4444;
-            --accent-orange: #f97316;
-            --accent-green: #10b981;
-            --accent-yellow: #eab308;
+            --accent-purple: #a78bfa;
+            --accent-red: #f43f5e;
+            --accent-orange: #fb923c;
+            --accent-green: #34d399;
+            --accent-yellow: #facc15;
+            --gradient-main: linear-gradient(135deg, #00d4ff 0%, #a78bfa 100%);
+            --shadow-glow: 0 0 30px rgba(0,212,255,0.08);
+            --radius: 14px;
+            --radius-sm: 10px;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
-            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            font-family: -apple-system, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
-            overflow-x: hidden;
+            line-height: 1.6;
         }
-
-        /* 背景动画 */
         body::before {
             content: '';
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
+            position: fixed; inset: 0;
             background:
-                radial-gradient(ellipse at 20% 50%, rgba(0,212,255,0.05) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 20%, rgba(168,85,247,0.05) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 80%, rgba(239,68,68,0.03) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 0;
+                radial-gradient(ellipse 80% 60% at 20% 10%, rgba(0,212,255,0.07) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 85% 90%, rgba(167,139,250,0.06) 0%, transparent 55%),
+                radial-gradient(ellipse 50% 40% at 50% 50%, rgba(244,63,94,0.03) 0%, transparent 50%);
+            pointer-events: none; z-index: 0;
         }
 
-        .container {
-            position: relative;
-            z-index: 1;
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 20px;
+        .wrap { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+        /* ===== 顶部导航 ===== */
+        .topbar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 24px; background: rgba(15,23,42,0.7);
+            border: 1px solid var(--border-color); border-radius: var(--radius);
+            backdrop-filter: blur(16px); margin-bottom: 24px;
         }
-
-        /* Header */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 30px;
-            background: linear-gradient(135deg, rgba(0,212,255,0.1) 0%, rgba(168,85,247,0.1) 100%);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            margin-bottom: 24px;
-            backdrop-filter: blur(10px);
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand-icon {
+            width: 38px; height: 38px; border-radius: 10px;
+            background: var(--gradient-main); display: flex; align-items: center; justify-content: center;
+            font-size: 18px; box-shadow: 0 4px 16px rgba(0,212,255,0.25);
         }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
+        .brand-text h1 { font-size: 1.15rem; font-weight: 700; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .brand-text span { font-size: 0.68rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; }
+        .topbar-right { display: flex; align-items: center; gap: 16px; font-size: 0.82rem; color: var(--text-secondary); }
+        .refresh-btn {
+            background: rgba(0,212,255,0.1); color: var(--accent-cyan);
+            border: 1px solid rgba(0,212,255,0.2); border-radius: 8px;
+            padding: 6px 14px; cursor: pointer; font-size: 0.78rem;
+            transition: all 0.2s;
         }
+        .refresh-btn:hover { background: rgba(0,212,255,0.2); transform: translateY(-1px); }
 
-        .logo-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            animation: pulse-glow 3s ease-in-out infinite;
+        /* ===== 主 IP 卡片（英雄区）===== */
+        .hero-section { margin-bottom: 24px; }
+        .hero-card {
+            background: linear-gradient(145deg, rgba(21,29,46,0.95), rgba(15,23,42,0.98));
+            border: 1px solid var(--border-color); border-radius: var(--radius);
+            overflow: hidden; position: relative;
         }
-
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(0,212,255,0.3); }
-            50% { box-shadow: 0 0 35px rgba(168,85,247,0.4); }
+        .hero-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: var(--gradient-main);
         }
-
-        .logo h1 {
-            font-size: 1.6rem;
-            font-weight: 700;
-            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .hero-inner { padding: 28px 32px; }
+        .hero-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+        .ip-display-row { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+        .ip-big { font-size: 2.6rem; font-weight: 800; font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', monospace; letter-spacing: -0.5px; color: var(--text-primary); }
+        .ip-badge-list { display: flex; gap: 8px; flex-wrap: wrap; }
+        .ip-badge {
+            padding: 4px 12px; border-radius: 20px; font-size: 0.72rem; font-weight: 600;
         }
+        .badge-vpn { background: rgba(251,146,60,0.15); color: var(--accent-orange); border: 1px solid rgba(251,146,60,0.25); }
+        .badge-proxy { background: rgba(244,63,94,0.12); color: var(--accent-red); border: 1px solid rgba(244,63,94,0.2); }
+        .badge-datacenter { background: rgba(167,139,250,0.12); color: var(--accent-purple); border: 1px solid rgba(167,139,250,0.2); }
+        .badge-residential { background: rgba(52,211,153,0.12); color: var(--accent-green); border: 1px solid rgba(52,211,153,0.2); }
+        .badge-unknown { background: rgba(122,139,168,0.1); color: var(--text-secondary); border: 1px solid rgba(122,139,168,0.15); }
 
-        .logo .subtitle {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            letter-spacing: 2px;
-            text-transform: uppercase;
+        /* 真实 IP 泄露检测区 */
+        .leak-section {
+            margin-top: 20px; padding-top: 20px;
+            border-top: 1px solid var(--border-color);
         }
-
-        .status-bar {
-            display: flex;
-            align-items: center;
-            gap: 25px;
+        .leak-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .leak-title { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); }
+        .leak-status { font-size: 0.7rem; padding: 2px 10px; border-radius: 10px; font-weight: 600; }
+        .leak-safe { background: rgba(52,211,153,0.12); color: var(--accent-green); }
+        .leak-warning { background: rgba(251,146,60,0.12); color: var(--accent-orange); }
+        .leak-danger { background: rgba(244,63,94,0.12); color: var(--accent-red); animation: leakPulse 2s infinite; }
+        @keyframes leakPulse { 0%,100%{box-shadow:0 0 0 0 rgba(244,63,94,0.3)} 50%{box-shadow:0 0 0 8px rgba(244,63,94,0)} }
+        .leak-ips { display: flex; gap: 12px; flex-wrap: wrap; }
+        .leak-ip-item {
+            background: rgba(0,0,0,0.25); border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm); padding: 12px 16px; min-width: 200px;
         }
+        .leak-ip-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .leak-ip-value { font-family: monospace; font-size: 1.05rem; font-weight: 600; color: var(--accent-cyan); margin-top: 2px; }
+        .leak-ip-value.danger { color: var(--accent-red); }
+        .leak-ip-value.same { color: var(--accent-green); }
 
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.85rem;
+        /* ===== 信息网格 ===== */
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .info-card {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: var(--radius); overflow: hidden;
+            transition: border-color 0.25s, transform 0.2s, box-shadow 0.25s;
         }
-
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            animation: blink 2s infinite;
-        }
-
-        .status-dot.online { background: var(--accent-green); box-shadow: 0 0 10px var(--accent-green); }
-        .status-dot.warning { background: var(--accent-yellow); box-shadow: 0 0 10px var(--accent-yellow); }
-        .status-dot.danger { background: var(--accent-red); box-shadow: 0 0 10px var(--accent-red); }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
-
-        /* 统计卡片 */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        .stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 24px;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.3s, border-color 0.3s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-3px);
-            border-color: var(--accent-cyan);
-        }
-
-        .stat-card::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--card-accent, var(--accent-cyan)), transparent);
-        }
-
-        .stat-card.cyan { --card-accent: var(--accent-cyan); }
-        .stat-card.purple { --card-accent: var(--accent-purple); }
-        .stat-card.red { --card-accent: var(--accent-red); }
-        .stat-card.orange { --card-accent: var(--accent-orange); }
-
-        .stat-label {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-        }
-
-        .stat-value {
-            font-size: 2.4rem;
-            font-weight: 700;
-            line-height: 1;
-        }
-
-        .stat-card.cyan .stat-value { color: var(--accent-cyan); }
-        .stat-card.purple .stat-value { color: var(--accent-purple); }
-        .stat-card.red .stat-value { color: var(--accent-red); }
-        .stat-card.orange .stat-value { color: var(--accent-orange); }
-
-        .stat-change {
-            font-size: 0.75rem;
-            margin-top: 8px;
-            color: var(--text-secondary);
-        }
-
-        .stat-change.up { color: var(--accent-red); }
-        .stat-change.down { color: var(--accent-green); }
-
-        /* 主内容区 */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 380px;
-            gap: 20px;
-            margin-bottom: 24px;
-        }
-
-        .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border-color);
+        .info-card:hover { border-color: var(--border-glow); transform: translateY(-2px); box-shadow: var(--shadow-glow); }
+        .card-head {
+            display: flex; align-items: center; gap: 10px;
+            padding: 14px 18px; border-bottom: 1px solid var(--border-color);
             background: rgba(0,0,0,0.2);
         }
-
-        .card-title {
-            font-size: 0.9rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .card-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+        .icon-cyan { background: rgba(0,212,255,0.12); }
+        .icon-purple { background: rgba(167,139,250,0.12); }
+        .icon-red { background: rgba(244,63,94,0.12); }
+        .icon-orange { background: rgba(251,146,60,0.12); }
+        .icon-green { background: rgba(52,211,153,0.12); }
+        .icon-yellow { background: rgba(250,204,21,0.12); }
+        .card-title { font-size: 0.85rem; font-weight: 600; }
+        .card-body { padding: 16px 18px; }
+        .info-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 0; border-bottom: 1px solid rgba(30,42,64,0.5);
         }
+        .info-row:last-child { border-bottom: none; }
+        .info-key { font-size: 0.78rem; color: var(--text-secondary); }
+        .info-val { font-size: 0.82rem; font-weight: 500; text-align: right; max-width: 60%; word-break: break-all; }
+        .info-val.mono { font-family: 'SF Mono', 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--accent-cyan); }
+        .info-val.flag { display: flex; align-items: center; gap: 6px; }
+        .flag-emoji { font-size: 1.2rem; }
 
-        .card-title .icon {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--accent-cyan);
+        /* ===== Traceroute 区域 ===== */
+        .trace-section { margin-bottom: 24px; }
+        .trace-card {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: var(--radius); overflow: hidden;
         }
-
-        .card-body {
-            padding: 20px;
+        .trace-head {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 18px; border-bottom: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.2);
         }
-
-        /* 图表容器 */
-        .chart-container {
-            position: relative;
-            height: 300px;
+        .trace-body { padding: 18px; }
+        .trace-hops { max-height: 400px; overflow-y: auto; }
+        .trace-hops::-webkit-scrollbar { width: 5px; }
+        .trace-hops::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        .hop-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 8px 10px; border-radius: 8px; margin-bottom: 4px;
+            transition: background 0.15s;
         }
-
-        /* 攻击列表 */
-        .attack-list {
-            max-height: 500px;
-            overflow-y: auto;
+        .hop-row:hover { background: rgba(0,212,255,0.04); }
+        .hop-num {
+            width: 28px; height: 28px; border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
         }
+        .hop-start { background: rgba(0,212,255,0.15); color: var(--accent-cyan); }
+        .hop-mid { background: rgba(122,139,168,0.1); color: var(--text-secondary); }
+        .hop-end { background: rgba(52,211,153,0.15); color: var(--accent-green); }
+        .hop-timeout { background: rgba(244,63,94,0.1); color: var(--accent-red); }
+        .hop-ip { font-family: monospace; font-size: 0.82rem; color: var(--text-primary); min-width: 140px; }
+        .hop-host { font-size: 0.75rem; color: var(--text-secondary); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hop-ms { font-family: monospace; font-size: 0.75rem; color: var(--accent-cyan); min-width: 65px; text-align: right; }
+        .trace-bar-container { flex: 1; min-width: 80px; height: 6px; background: rgba(30,42,64,0.5); border-radius: 3px; overflow: hidden; position: relative; }
+        .trace-bar { height: 100%; border-radius: 3px; background: var(--gradient-main); transition: width 0.5s ease; }
 
-        .attack-list::-webkit-scrollbar { width: 6px; }
-        .attack-list::-webkit-scrollbar-track { background: transparent; }
-        .attack-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
-
-        .attack-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 14px 0;
-            border-bottom: 1px solid rgba(42,53,72,0.5);
-            animation: slideIn 0.3s ease-out;
+        /* ===== 加载动画 ===== */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(30,42,64,0.4) 25%, rgba(42,58,84,0.4) 50%, rgba(30,42,64,0.4) 75%);
+            background-size: 200% 100%; animation: shimmer 1.5s infinite;
+            border-radius: 6px; display: inline-block;
         }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        .skeleton-text { height: 14px; width: 120px; margin: 6px 0; }
+        .skeleton-ip { height: 36px; width: 220px; }
 
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .attack-item:last-child { border-bottom: none; }
-
-        .attack-severity {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-top: 6px;
-            flex-shrink: 0;
-        }
-
-        .severity-high { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
-        .severity-medium { background: var(--accent-orange); box-shadow: 0 0 8px var(--accent-orange); }
-        .severity-low { background: var(--accent-yellow); }
-
-        .attack-info { flex: 1; min-width: 0; }
-
-        .attack-ip {
-            font-family: monospace;
-            font-size: 0.9rem;
-            color: var(--accent-cyan);
-            cursor: pointer;
-        }
-
-        .attack-ip:hover { text-decoration: underline; }
-
-        .attack-detail {
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-            margin-top: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .attack-time {
-            font-size: 0.72rem;
-            color: var(--text-secondary);
-            white-space: nowrap;
-        }
-
-        .attack-type-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .badge-sql_injection { background: rgba(239,68,68,0.2); color: var(--accent-red); }
-        .badge-xss { background: rgba(239,68,68,0.2); color: var(--accent-red); }
-        .badge-path_traversal { background: rgba(249,115,22,0.2); color: var(--accent-orange); }
-        .badge-port_scan { background: rgba(249,115,22,0.2); color: var(--accent-orange); }
-        .badge-ssh_brute_force { background: rgba(239,68,68,0.2); color: var(--accent-red); }
-        .badge-scanner_fingerprint { background: rgba(16,185,129,0.2); color: var(--accent-green); }
-        .badge-sensitive_file { background: rgba(249,115,22,0.2); color: var(--accent-orange); }
-        .badge-suspicious_request { background: rgba(148,163,184,0.2); color: var(--text-secondary); }
-        .badge-ssh_connection { background: rgba(16,185,129,0.2); color: var(--accent-green); }
-        .badge-cmd_injection { background: rgba(239,68,68,0.2); color: var(--accent-red); }
-
-        /* TOP 攻击者 */
-        .attacker-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .attacker-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(42,53,72,0.5);
-        }
-
-        .attacker-item:last-child { border-bottom: none; }
-
-        .attacker-rank {
-            width: 24px;
-            height: 24px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-right: 12px;
-            flex-shrink: 0;
-        }
-
-        .rank-1 { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #000; }
-        .rank-2 { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); color: #000; }
-        .rank-3 { background: linear-gradient(135deg, #cd7f32, #a06228); color: #fff; }
-        .rank-other { background: var(--bg-secondary); color: var(--text-secondary); }
-
-        .attacker-info { flex: 1; min-width: 0; }
-
-        .attacker-ip {
-            font-family: monospace;
-            font-size: 0.85rem;
-            color: var(--text-primary);
-        }
-
-        .attacker-types {
-            font-size: 0.72rem;
-            color: var(--text-secondary);
-        }
-
-        .attacker-count {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--accent-cyan);
-            min-width: 45px;
-            text-align: right;
-        }
-
-        /* 底部网格 */
-        .bottom-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        /* 实时攻击流 */
-        .live-indicator {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.75rem;
-            color: var(--accent-red);
-        }
-
-        .live-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--accent-red);
-            border-radius: 50%;
-            animation: livePulse 1s infinite;
-        }
-
-        @keyframes livePulse {
-            0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); }
-            70% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
-            100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
-        }
+        /* ===== 底部 ===== */
+        .footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 0.72rem; }
 
         /* 响应式 */
-        @media (max-width: 1200px) {
-            .main-grid { grid-template-columns: 1fr; }
-            .bottom-grid { grid-template-columns: 1fr; }
+        @media (max-width: 768px) {
+            .wrap { padding: 12px; }
+            .ip-big { font-size: 1.8rem; }
+            .hero-inner { padding: 20px; }
+            .info-grid { grid-template-columns: 1fr; }
+            .topbar { flex-direction: column; gap: 12px; }
         }
-
-        /* 空状态 */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-secondary);
-        }
-
-        .empty-state .icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-            opacity: 0.3;
-        }
-
-        /* 加载动画 */
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 40px;
-            color: var(--text-secondary);
-        }
-
-        .spinner {
-            width: 30px;
-            height: 30px;
-            border: 3px solid var(--border-color);
-            border-top-color: var(--accent-cyan);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-right: 12px;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-<div class="container">
-    <!-- Header -->
-    <div class="header">
-        <div class="logo">
-            <div class="logo-icon">🛡️</div>
-            <div>
+<div class="wrap">
+
+    <!-- 顶部导航 -->
+    <div class="topbar">
+        <div class="brand">
+            <div class="brand-icon">🌐</div>
+            <div class="brand-text">
                 <h1>CyberStroll Top</h1>
-                <div class="subtitle">Honeypot Attack Monitor</div>
+                <span>Digital Fingerprint</span>
             </div>
         </div>
-        <div class="status-bar">
-            <div class="status-item">
-                <span class="status-dot online"></span>
-                <span>系统在线</span>
-            </div>
-            <div class="status-item" id="uptime">运行时间: --</div>
-            <div class="status-item" id="clock">--:--:--</div>
+        <div class="topbar-right">
+            <span id="clock">--:--:--</span>
+            <button class="refresh-btn" onclick="refreshAll()">🔄 刷新</button>
         </div>
     </div>
 
-    <!-- 统计卡片 -->
-    <div class="stats-grid">
-        <div class="stat-card cyan">
-            <div class="stat-label">总攻击次数</div>
-            <div class="stat-value" id="total-attacks">--</div>
-            <div class="stat-change" id="total-change">历史累计</div>
-        </div>
-        <div class="stat-card purple">
-            <div class="stat-label">独立攻击 IP</div>
-            <div class="stat-value" id="unique-ips">--</div>
-            <div class="stat-change" id="ips-change">--</div>
-        </div>
-        <div class="stat-card red">
-            <div class="stat-label">高危攻击</div>
-            <div class="stat-value" id="high-severity">--</div>
-            <div class="stat-change">SQL注入 / XSS / RCE</div>
-        </div>
-        <div class="stat-card orange">
-            <div class="stat-label">今日新增</div>
-            <div class="stat-value" id="today-count">--</div>
-            <div class="stat-change" id="today-change">过去 24 小时</div>
-        </div>
-    </div>
-
-    <!-- 主内容 -->
-    <div class="main-grid">
-        <!-- 左侧：图表 + 时间线 -->
-        <div style="display:flex;flex-direction:column;gap:20px;">
-            <!-- 攻击类型分布 -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title"><span class="icon"></span>攻击类型分布</span>
-                    <span class="live-indicator"><span class="live-dot"></span>LIVE</span>
+    <!-- 英雄区：IP + 代理检测 -->
+    <div class="hero-section">
+        <div class="hero-card">
+            <div class="hero-inner">
+                <div class="hero-label">你的公网 IP 地址</div>
+                <div class="ip-display-row">
+                    <div class="ip-big" id="main-ip"><span class="skeleton skeleton-ip"></span></div>
+                    <div class="ip-badge-list" id="ip-badges"></div>
                 </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="typeChart"></canvas>
+
+                <!-- WebRTC / 真实 IP 泄露检测 -->
+                <div class="leak-section">
+                    <div class="leak-header">
+                        <span>🔍</span>
+                        <span class="leak-title">代理 / VPN 真实 IP 检测</span>
+                        <span class="leak-status leak-unknown" id="leak-status">检测中...</span>
                     </div>
-                </div>
-            </div>
-
-            <!-- 攻击时间线 -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title"><span class="icon"></span>24小时攻击时间线</span>
-                </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="timelineChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 右侧：实时攻击流 + TOP 攻击者 -->
-        <div style="display:flex;flex-direction:column;gap:20px;">
-            <!-- 实时攻击流 -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title"><span class="icon" style="background:var(--accent-red)"></span>实时攻击流</span>
-                    <span class="live-indicator"><span class="live-dot"></span>实时更新</span>
-                </div>
-                <div class="card-body" style="padding:12px 20px;">
-                    <div class="attack-list" id="attack-list">
-                        <div class="empty-state">
-                            <div class="icon">📡</div>
-                            <div>等待攻击数据...</div>
-                            <div style="margin-top:8px;font-size:0.8rem;">靶机上线后自动捕获</div>
+                    <div class="leak-ips" id="leak-ips">
+                        <div class="leak-ip-item">
+                            <div class="leak-ip-label">HTTP 连接 IP</div>
+                            <div class="leak-ip-value"><span class="skeleton skeleton-text"></span></div>
+                        </div>
+                        <div class="leak-ip-item">
+                            <div class="leak-ip-label">WebRTC 泄露 IP</div>
+                            <div class="leak-ip-value" id="webrtc-ip">检测中...</div>
                         </div>
                     </div>
+                    <div id="leak-summary" style="margin-top:10px;font-size:0.78rem;color:var(--text-secondary)"></div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- TOP 攻击者 -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title"><span class="icon" style="background:var(--accent-purple)"></span>TOP 攻击者</span>
+    <!-- 信息网格 -->
+    <div class="info-grid">
+        <!-- 地理位置 -->
+        <div class="info-card">
+            <div class="card-head">
+                <div class="card-icon icon-cyan">📍</div>
+                <div class="card-title">地理位置</div>
+            </div>
+            <div class="card-body" id="geo-body">
+                <div class="info-row"><span class="info-key">国家/地区</span><span class="info-val flag"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">省份/州</span><span class="info-val"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">城市</span><span class="info-val"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">ISP / 运营商</span><span class="info-val"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">ASN</span><span class="info-val mono"><span class="skeleton skeleton-text"></span></span></div>
+            </div>
+        </div>
+
+        <!-- 浏览器 & 设备 -->
+        <div class="info-card">
+            <div class="card-head">
+                <div class="card-icon icon-purple">💻</div>
+                <div class="card-title">浏览器 & 设备</div>
+            </div>
+            <div class="card-body" id="browser-body">
+                <div class="info-row"><span class="info-key">User Agent</span><span class="info-val mono" style="font-size:0.7rem" id="ua-val"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">浏览器</span><span class="info-val" id="browser-name"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">操作系统</span><span class="info-val" id="os-name"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">设备类型</span><span class="info-val" id="device-type"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">屏幕分辨率</span><span class="info-val mono" id="screen-res"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">语言</span><span class="info-val" id="lang"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">时区</span><span class="info-val" id="tz"><span class="skeleton skeleton-text"></span></span></div>
+            </div>
+        </div>
+
+        <!-- 连接信息 -->
+        <div class="info-card">
+            <div class="card-head">
+                <div class="card-icon icon-green">🔗</div>
+                <div class="card-title">连接信息</div>
+            </div>
+            <div class="card-body" id="conn-body">
+                <div class="info-row"><span class="info-key">协议</span><span class="info-val" id="protocol"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">请求方法</span><span class="info-val mono" id="method"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">Referer</span><span class="info-val mono" style="font-size:0.72rem" id="referer"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">Accept-Language</span><span class="info-val" id="accept-lang"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">Cookies</span><span class="info-val" id="cookies"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">DNT</span><span class="info-val" id="dnt"><span class="skeleton skeleton-text"></span></span></div>
+            </div>
+        </div>
+
+        <!-- HTTP 头分析 -->
+        <div class="info-card">
+            <div class="card-head">
+                <div class="card-icon icon-orange">📡</div>
+                <div class="card-title">HTTP 头分析</div>
+            </div>
+            <div class="card-body" id="headers-body">
+                <div class="info-row"><span class="info-key">X-Forwarded-For</span><span class="info-val mono" id="xff"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">X-Real-IP</span><span class="info-val mono" id="xri"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">CF-Connecting-IP</span><span class="info-val mono" id="cfip"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">Via</span><span class="info-val mono" id="via"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">CF-Ray</span><span class="info-val mono" id="cfray"><span class="skeleton skeleton-text"></span></span></div>
+                <div class="info-row"><span class="info-key">CF-IPCountry</span><span class="info-val" id="cfcountry"><span class="skeleton skeleton-text"></span></span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Traceroute -->
+    <div class="trace-section">
+        <div class="trace-card">
+            <div class="trace-head">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div class="card-icon icon-yellow">🛤️</div>
+                    <div class="card-title">Traceroute 路径 → 本服务器</div>
                 </div>
-                <div class="card-body" style="padding:12px 20px;">
-                    <div class="attacker-list" id="attacker-list">
-                        <div class="empty-state">
-                            <div class="icon">🎯</div>
-                            <div>暂无数据</div>
-                        </div>
+                <button class="refresh-btn" onclick="runTrace()" id="trace-btn">▶ 开始追踪</button>
+            </div>
+            <div class="trace-body">
+                <div class="trace-hops" id="trace-hops">
+                    <div style="text-align:center;padding:40px;color:var(--text-muted);font-size:0.85rem;">
+                        点击「开始追踪」查看从你到本服务器的网络路径
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 底部：严重程度分布 -->
-    <div class="bottom-grid">
-        <div class="card">
-            <div class="card-header">
-                <span class="card-title"><span class="icon" style="background:var(--accent-orange)"></span>严重程度分布</span>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="severityChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-header">
-                <span class="card-title"><span class="icon" style="background:var(--accent-green)"></span>攻击方法分布</span>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="methodChart"></canvas>
-                </div>
-            </div>
-        </div>
+    <div class="footer">
+        CyberStroll Top &copy; 2026 · 数据仅用于展示，不会存储
     </div>
 </div>
 
 <script>
-// ===== 全局状态 =====
-const state = {
-    attacks: [],
-    attackers: [],
-    stats: null,
-    charts: {},
-    startTime: Date.now(),
-    updateInterval: null,
+// ===== 工具函数 =====
+const $ = s => document.getElementById(s);
+const esc = s => { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; };
+const flagEmoji = cc => {
+    const m = {'AD':'🇦🇩','AE':'🇦🇪','AF':'🇦🇫','AG':'🇦🇬','AI':'🇦🇮','AL':'🇦🇱','AM':'🇦🇲','AO':'🇦🇴','AQ':'🇶🇦','AR':'🇦🇷','AS':'🇦🇸','AT':'🇦🇹','AU':'🇦🇺','AW':'🇦🇼','AX':'🇦🇽','AZ':'🇦🇿','BA':'🇧🇦','BB':'🇧🇧','BD':'🇧🇩','BE':'🇧🇪','BF':'🇧🇫','BG':'🇧🇬','BH':'🇧🇭','BI':'🇧🇮','BJ':'🇧🇯','BL':'🇧🇱','BM':'🇧🇲','BN':'🇧🇳','BO':'🇧🇴','BQ':'🇧🇶','BR':'🇧🇷','BS':'🇧🇸','BT':'🇧🇹','BV':'🇧🇻','BW':'🇧🇼','BY':'🇧🇾','BZ':'🇧🇿','CA':'🇨🇦','CC':'🇨🇨','CD':'🇨🇩','CF':'🇨🇫','CG':'🇨🇬','CH':'🇨🇭','CI':'🇨🇮','CK':'🇨🇰','CL':'🇨🇱','CM':'🇨🇲','CN':'🇨🇳','CO':'🇨🇴','CR':'🇨🇷','CU':'🇨🇺','CV':'🇨🇻','CW':'🇨🇼','CX':'🇨🇽','CY':'🇨🇾','CZ':'🇨🇿','DE':'🇩🇪','DJ':'🇩🇯','DK':'🇩🇰','DM':'🇩🇲','DO':'🇩🇴','DZ':'🇩🇿','EC':'🇪🇨','EE':'🇪🇪','EG':'🇪🇬','EH':'🇪🇭','ER':'🇪🇷','ES':'🇪🇸','ET':'🇪🇹','FI':'🇫🇮','FJ':'🇫🇯','FK':'🇫🇰','FM':'🇫🇲','FO':'🇫🇴','FR':'🇫🇷','GA':'🇬🇦','GB':'🇬🇧','GD':'🇬🇩','GE':'🇬🇪','GF':'🇬🇫','GG':'🇬🇬','GH':'🇬🇭','GI':'🇬🇮','GL':'🇬🇱','GM':'🇬🇲','GN':'🇬🇳','GP':'🇬🇵','GQ':'🇬🇶','GR':'🇬🇷','GS':'🇬🇸','GT':'🇬🇹','GU':'🇬🇺','GW':'🇬🇼','GY':'🇬🇾','HK':'🇭🇰','HM':'🇭🇲','HN':'🇭🇳','HR':'🇭🇷','HT':'🇭🇹','HU':'🇭🇺','ID':'🇮🇩','IE':'🇮🇪','IL':'🇮🇱','IM':'🇮🇲','IN':'🇮🇳','IO':'🇮🇴','IQ':'🇮🇶','IR':'🇮🇷','IS':'🇮🇸','IT':'🇮🇹','JE':'🇯🇪','JM':'🇯🇲','JO':'🇯🇴','JP':'🇯🇵','KE':'🇰🇪','KG':'🇰🇬','KH':'🇰🇭','KI':'🇰🇮','KM':'🇰🇲','KN':'🇰🇳','KP':'🇰🇵','KR':'🇰🇷','KW':'🇰🇼','KY':'🇰🇾','KZ':'🇰🇿','LA':'🇱🇦','LB':'🇱🇧','LC':'🇱🇨','LI':'🇱🇮','LK':'🇱🇰','LR':'🇱🇷','LS':'🇱🇸','LT':'🇱🇹','LU':'🇱🇺','LV':'🇱🇻','LY':'🇱🇾','MA':'🇲🇦','MC':'🇲🇨','MD':'🇲🇩','ME':'🇲🇪','MF':'🇲🇫','MG':'🇲🇬','MH':'🇲🇭','MK':'🇲🇰','ML':'🇲🇱','MM':'🇲🇲','MN':'🇲🇳','MO':'🇲🇴','MP':'🇲🇵','MQ':'🇲🇶','MR':'🇲🇷','MS':'🇲🇸','MT':'🇲🇹','MU':'🇲🇺','MV':'🇲🇻','MW':'🇲🇼','MX':'🇲🇽','MY':'🇲🇾','MZ':'🇲🇿','NA':'🇳🇦','NC':'🇳🇨','NE':'🇳🇪','NF':'🇳🇫','NG':'🇳🇬','NI':'🇳🇮','NL':'🇳🇱','NO':'🇳🇴','NP':'🇳🇵','NR':'🇳🇷','NU':'🇳🇺','NZ':'🇳🇿','OM':'🇴🇲','PA':'🇵🇦','PE':'🇵🇪','PF':'🇵🇫','PG':'🇵🇬','PH':'🇵🇭','PK':'🇵🇰','PL':'🇵🇱','PM':'🇵🇲','PN':'🇵🇳','PR':'🇵🇷','PS':'🇵🇸','PT':'🇵🇹','PW':'🇵🇼','PY':'🇵🇾','QA':'🇶🇦','RE':'🇷🇪','RO':'🇷🇴','RS':'🇷🇸','RU':'🇷🇺','RW':'🇷🇼','SA':'🇸🇦','SB':'🇸🇧','SC':'🇸🇨','SD':'🇸🇩','SE':'🇸🇪','SG':'🇸🇬','SH':'🇸🇭','SI':'🇸🇮','SJ':'🇸🇯','SK':'🇸🇰','SL':`🇸🇱`,'SM':'🇸🇲','SN':'🇸🇳','SO':'🇸🇴','SR':'🇸🇷','SS':'🇸🇸','ST':'🇸🇹','SV':'🇸🇻','SX':'🇸🇽','SY':'🇸🇾','SZ':'🇸🇿','TC':'🇹🇨','TF':'🇹🇫','TG':'🇹🇬','TH':'🇹🇭','TJ':'🇹🇯','TK':'🇹🇰','TL':'🇹🇱','TM':'🇹🇲','TN':'🇹🇳','TO':'🇹🇴','TR':'🇹🇷','TT':'🇹🇹','TV':'🇹🇻','TW':'🇹🇼','TZ':'🇹🇿','UA':'🇺🇦','UG':'🇺🇬','US':'🇺🇸','UY':'🇺🇾','UZ':'🇺🇿','VA':'🇻🇦','VC':'🇻🇨','VE':'🇻🇪','VG':'🇻🇬','VI':'🇻🇮','VN':'🇻🇳','VU':'🇻🇺','WF':'🇼🇫','WS':'🇼🇸','YE':'🇾🇪','YT':'🇾🇹','ZA':'🇿🇦','ZM':'🇿🇲','ZW':'🇿🇼'};
+    return m[cc] || '🏳️';
 };
 
-// ===== 颜色配置 =====
-const COLORS = {
-    type: {
-        sql_injection: '#ef4444',
-        xss: '#ef4444',
-        path_traversal: '#f97316',
-        port_scan: '#f97316',
-        ssh_brute_force: '#ef4444',
-        scanner_fingerprint: '#10b981',
-        sensitive_file: '#f97316',
-        suspicious_request: '#94a3b8',
-        ssh_connection: '#10b981',
-        cmd_injection: '#ef4444',
-        unknown: '#64748b',
-    },
-    severity: {
-        high: '#ef4444',
-        medium: '#f97316',
-        low: '#eab308',
-        unknown: '#64748b',
-    },
-    method: {
-        GET: '#00d4ff',
-        POST: '#a855f7',
-        PUT: '#10b981',
-        DELETE: '#ef4444',
-        OPTIONS: '#94a3b8',
-        SSH: '#f97316',
-    },
-};
+// ===== 解析 UA =====
+function parseUA(ua) {
+    let browser = 'Unknown', os = 'Unknown', device = 'Desktop';
+    // Browser
+    if (/Edg\/\S+/.test(ua)) browser = 'Microsoft Edge ' + ua.match(/Edg\/(\S+)/)?.[1];
+    else if (/Chrome\/\S+/.test(ua)) browser = 'Chrome ' + ua.match(/Chrome\/(\S+)/)?.[1];
+    else if (/Firefox\/\S+/.test(ua)) browser = 'Firefox ' + ua.match(/Firefox\/(\S+)/)?.[1];
+    else if (/Safari\/\S+/.test(ua) && !/Chrome/.test(ua)) browser = 'Safari';
+    else if (/MSIE|Trident/.test(ua)) browser = 'Internet Explorer';
+    // OS
+    if (/Windows NT 10/.test(ua)) os = 'Windows 10/11';
+    else if (/Windows NT 6\./.test(ua)) os = 'Windows 7/8';
+    else if (/Mac OS X/.test(ua)) os = 'macOS ' + (ua.match(/Mac OS X ([^)]+)/)?.[1] || '');
+    else if (/Android/.test(ua)) { os = 'Android'; device = 'Mobile'; }
+    else if (/iOS|iPhone|iPad/.test(ua)) { os = 'iOS'; device = /iPad/.test(ua)?'Tablet':'Mobile'; }
+    else if (/Linux/.test(ua)) os = 'Linux';
+    return { browser, os, device };
+}
 
-const TYPE_LABELS = {
-    sql_injection: 'SQL 注入',
-    xss: 'XSS 攻击',
-    path_traversal: '路径遍历',
-    port_scan: '端口扫描',
-    ssh_brute_force: 'SSH 暴力破解',
-    scanner_fingerprint: '扫描器指纹',
-    sensitive_file: '敏感文件访问',
-    suspicious_request: '可疑请求',
-    ssh_connection: 'SSH 连接',
-    cmd_injection: '命令注入',
-    unknown: '未知',
-};
+// ===== WebRTC 真实 IP 检测 =====
+function detectWebRTC() {
+    return new Promise((resolve) => {
+        const ips = new Set();
+        try {
+            const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+            pc.createDataChannel('');
+            pc.onicecandidate = (e) => {
+                if (!e.candidate || !e.candidate.candidate) return;
+                const match = e.candidate.candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
+                if (match && match[1] && !match[1].startsWith('0.')) ips.add(match[1]);
+            };
+            setTimeout(() => {
+                pc.close();
+                resolve(Array.from(ips));
+            }, 3000);
+            pc.createOffer().then(o => pc.setLocalDescription(o));
+        } catch(e) {
+            resolve([]);
+        }
+    });
+}
 
-const SEVERITY_LABELS = { high: '高危', medium: '中危', low: '低危', unknown: '未知' };
-
-// ===== API 调用 =====
-async function fetchAPI(endpoint) {
+// ===== 加载访客信息 =====
+async function loadVisitorInfo() {
     try {
-        const resp = await fetch(`/api/${endpoint}`);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        return await resp.json();
-    } catch (err) {
-        console.error(`API [${endpoint}] error:`, err);
+        const r = await fetch('/api/visitor-info');
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+
+        // 主 IP
+        $('main-ip').textContent = d.ip;
+
+        // 代理标签
+        const badges = $('ip-badges');
+        badges.innerHTML = '';
+        if (d.proxy) badges.innerHTML += `<span class="ip-badge badge-proxy">⚠️ 代理 detected</span>`;
+        if (d.datacenter) badges.innerHTML += `<span class="ip-badge badge-datacenter">🖥️ 数据中心</span>`;
+        if (d.vpn) badges.innerHTML += `<span class="ip-badge badge-vpn">🛡️ VPN</span>`;
+        if (d.hosting) badges.innerHTML += `<span class="ip-badge badge-datacenter">托管服务</span>`;
+        if (!d.proxy && !d.datacenter && !d.vpn) badges.innerHTML += `<span class="ip-badge badge-residential">🏠 住宅 IP</span>`;
+
+        // 地理位置
+        const geo = d.geo || {};
+        $('geo-body').innerHTML = `
+            <div class="info-row"><span class="info-key">国家/地区</span><span class="info-val flag"><span class="flag-emoji">${flagEmoji(geo.countryCode)}</span> ${esc(geo.country)} (${esc(geo.countryCode)})</span></div>
+            <div class="info-row"><span class="info-key">省份/州</span><span class="info-val">${esc(geo.regionName)}</span></div>
+            <div class="info-row"><span class="info-key">城市</span><span class="info-val">${esc(geo.city)}</span></div>
+            <div class="info-row"><span class="info-key">ISP / 运营商</span><span class="info-val">${esc(geo.isp)}</span></div>
+            <div class="info-row"><span class="info-key">ASN</span><span class="info-val mono">${esc(geo.as)} · ${esc(geo.org)}</span></div>
+            <div class="info-row"><span class="info-key">经纬度</span><span class="info-val mono">${esc(geo.lat)}, ${esc(geo.lon)}</span></div>
+        `;
+
+        // HTTP 连接 IP
+        document.querySelector('.leak-ip-item:first-child .leak-ip-value').textContent = d.ip;
+
+        // HTTP 头
+        const h = d.headers || {};
+        $('headers-body').innerHTML = `
+            <div class="info-row"><span class="info-key">X-Forwarded-For</span><span class="info-val mono">${esc(h.x_forwarded_for || '-')}</span></div>
+            <div class="info-row"><span class="info-key">X-Real-IP</span><span class="info-val mono">${esc(h.x_real_ip || '-')}</span></div>
+            <div class="info-row"><span class="info-key">CF-Connecting-IP</span><span class="info-val mono">${esc(h.cf_connecting_ip || '-')}</span></div>
+            <div class="info-row"><span class="info-key">Via</span><span class="info-val mono">${esc(h.via || '-')}</span></div>
+            <div class="info-row"><span class="info-key">CF-Ray</span><span class="info-val mono">${esc(h.cf_ray || '-')}</span></div>
+            <div class="info-row"><span class="info-key">CF-IPCountry</span><span class="info-val">${esc(h.cf_ipcountry ? flagEmoji(h.cf_ipcountry)+' '+h.cf_ipcountry : '-')}</span></div>
+        `;
+
+        // 连接信息
+        $('protocol').textContent = location.protocol.toUpperCase();
+        $('method').textContent = d.method || 'GET';
+        $('referer').textContent = document.referrer || '(direct)';
+        $('accept-lang').textContent = h.accept_language || navigator.language || '-';
+        $('cookies').textContent = navigator.cookieEnabled ? 'Enabled' : 'Disabled';
+        $('dnt').textContent = navigator.doNotTrack || 'Unspecified';
+
+        return d;
+    } catch(e) {
+        console.error('加载访客信息失败:', e);
+        $('main-ip').textContent = '加载失败';
         return null;
     }
 }
 
-// ===== 数据加载 =====
-async function loadAllData() {
-    const [stats, recent, attackers] = await Promise.all([
-        fetchAPI('stats'),
-        fetchAPI('recent?limit=50'),
-        fetchAPI('top-attackers?limit=15'),
-    ]);
+// ===== 加载浏览器信息 =====
+function loadBrowserInfo() {
+    const ua = navigator.userAgent;
+    const p = parseUA(ua);
 
-    if (stats) {
-        state.stats = stats;
-        updateStats(stats);
-        updateCharts(stats);
-    }
-
-    if (recent && recent.length) {
-        state.attacks = recent;
-        renderAttackList(recent);
-    }
-
-    if (attackers && attackers.length) {
-        state.attackers = attackers;
-        renderAttackerList(attackers);
-    }
+    $('ua-val').textContent = ua.length > 80 ? ua.slice(0,80)+'...' : ua;
+    $('ua-val').title = ua;
+    $('browser-name').textContent = p.browser;
+    $('os-name').textContent = p.os;
+    $('device-type').textContent = p.device;
+    $('screen-res').textContent = `${screen.width}×${screen.height} (${window.devicePixelRatio}x)`;
+    $('lang').textContent = navigator.language || '-';
+    $('tz').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || '-';
 }
 
-// ===== 更新统计数字 =====
-function updateStats(s) {
-    animateNumber('total-attacks', s.total_attacks || 0);
-    animateNumber('unique-ips', s.unique_ips || 0);
-    animateNumber('high-severity', (s.by_severity?.high || 0) + (s.by_severity?.medium || 0));
-    animateNumber('today-count', s.total_attacks || 0);
+// ===== WebRTC 泄露检测 =====
+async function checkLeak(httpIp) {
+    const webrtcIps = await detectWebRTC();
+    const webrtcEl = $('webrtc-ip');
 
-    document.getElementById('ips-change').textContent =
-        `${s.unique_ips || 0} 个独立 IP`;
-}
-
-function animateNumber(id, target) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const current = parseInt(el.textContent.replace(/,/g, '')) || 0;
-    const diff = target - current;
-    const steps = 20;
-    const stepVal = diff / steps;
-    let step = 0;
-
-    const timer = setInterval(() => {
-        step++;
-        el.textContent = Math.round(current + stepVal * step).toLocaleString();
-        if (step >= steps) {
-            clearInterval(timer);
-            el.textContent = target.toLocaleString();
-        }
-    }, 25);
-}
-
-// ===== 图表初始化与更新 =====
-function initCharts() {
-    const chartOpts = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { labels: { color: '#94a3b8', font: { size: 11, family: "'SF Mono', monospace" } } },
-        },
-    };
-
-    // 攻击类型饼图
-    state.charts.typeChart = new Chart(
-        document.getElementById('typeChart'), {
-        type: 'doughnut',
-        data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0 }] },
-        options: {
-            ...chartOpts,
-            cutout: '65%',
-            plugins: { ...chartOpts.plugins, legend: { position: 'right', ...chartOpts.plugins.legend } },
-        },
-    });
-
-    // 时间线柱状图
-    state.charts.timelineChart = new Chart(
-        document.getElementById('timelineChart'), {
-        type: 'bar',
-        data: {
-            labels: Array.from({length: 24}, (_, i) => `${i.toString().padStart(2,'0')}:00`),
-            datasets: [{
-                label: '攻击次数',
-                data: new Array(24).fill(0),
-                backgroundColor: 'rgba(0,212,255,0.6)',
-                borderColor: '#00d4ff',
-                borderWidth: 1,
-                borderRadius: 4,
-            }],
-        },
-        options: {
-            ...chartOpts,
-            scales: {
-                x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(42,53,72,0.5)' } },
-                y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(42,53,72,0.5)' }, beginAtZero: true },
-            },
-            plugins: { legend: { display: false } },
-        },
-    });
-
-    // 严重程度
-    state.charts.severityChart = new Chart(
-        document.getElementById('severityChart'), {
-        type: 'polarArea',
-        data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
-        options: {
-            ...chartOpts,
-            plugins: { ...chartOpts.plugins, legend: { position: 'right', ...chartOpts.plugins.legend } },
-        },
-    });
-
-    // HTTP 方法
-    state.charts.methodChart = new Chart(
-        document.getElementById('methodChart'), {
-        type: 'doughnut',
-        data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0 }] },
-        options: {
-            ...chartOpts,
-            cutout: '60%',
-            plugins: { ...chartOpts.plugins, legend: { position: 'right', ...chartOpts.plugins.legend } },
-        },
-    });
-}
-
-function updateCharts(s) {
-    // 类型分布
-    if (s.by_type) {
-        const labels = Object.keys(s.by_type).map(k => TYPE_LABELS[k] || k);
-        const values = Object.values(s.by_type);
-        const colors = Object.keys(s.by_type).map(k => COLORS.type[k] || '#64748b');
-        state.charts.typeChart.data.labels = labels;
-        state.charts.typeChart.data.datasets[0].data = values;
-        state.charts.typeChart.data.datasets[0].backgroundColor = colors;
-        state.charts.typeChart.update();
-    }
-
-    // 时间线
-    if (s.timeline) {
-        const hours = Array.from({length: 24}, (_, i) => i);
-        const data = hours.map(h => s.timeline[h] || 0);
-        state.charts.timelineChart.data.datasets[0].data = data;
-        state.charts.timelineChart.update();
-    }
-
-    // 严重程度
-    if (s.by_severity) {
-        const labels = Object.keys(s.by_severity).map(k => SEVERITY_LABELS[k] || k);
-        const values = Object.values(s.by_severity);
-        const colors = Object.keys(s.by_severity).map(k => COLORS.severity[k] || '#64748b');
-        state.charts.severityChart.data.labels = labels;
-        state.charts.severityChart.data.datasets[0].data = values;
-        state.charts.severityChart.data.datasets[0].backgroundColor = colors.map(c => c + '99');
-        state.charts.severityChart.update();
-    }
-}
-
-// ===== 渲染攻击列表 =====
-function renderAttackList(attacks) {
-    const container = document.getElementById('attack-list');
-    if (!attacks || !attacks.length) {
-        container.innerHTML = `<div class="empty-state"><div class="icon">📡</div><div>等待攻击数据...</div></div>`;
+    if (webrtcIps.length === 0) {
+        webrtcEl.textContent = '未检测到 (安全)';
+        webrtcEl.className = 'leak-ip-value same';
+        $('leak-status').textContent = '✅ 安全 — 无泄露';
+        $('leak-status').className = 'leak-status leak-safe';
+        $('leak-summary').textContent = 'WebRTC 未泄露你的真实 IP 地址。如果你使用了代理/VPN，说明配置正确。';
         return;
     }
 
-    container.innerHTML = attacks.slice(0, 30).map(a => `
-        <div class="attack-item">
-            <span class="attack-severity severity-${a.attack_severity || 'low'}"></span>
-            <div class="attack-info">
-                <div>
-                    <span class="attack-ip">${escapeHtml(a.source_ip)}</span>
-                    ${a.attack_type ? `<span class="attack-type-badge badge-${a.attack_type}">${TYPE_LABELS[a.attack_type] || a.attack_type}</span>` : ''}
-                </div>
-                <div class="attack-detail">${escapeHtml((a.path || a.method || '').slice(0, 80))}</div>
-            </div>
-            <div class="attack-time">${formatTime(a.time_str || a.timestamp)}</div>
-        </div>
-    `).join('');
+    webrtcEl.textContent = webrtcIps.join(', ');
+    const leaked = webrtcIps.filter(ip => ip !== httpIp);
+
+    if (leaked.length > 0) {
+        webrtcEl.className = 'leak-ip-value danger';
+        $('leak-status').textContent = '⚠️ 检测到真实 IP 泄露！';
+        $('leak-status').className = 'leak-status leak-danger';
+        $('leak-summary').innerHTML = `<span style="color:var(--accent-red)">🚨 你的真实 IP (<strong>${leaked.join(', ')}</strong>) 通过 WebRTC 泄露了！</span> 这意味着即使你开了 VPN/代理，目标网站仍然可以获取你的真实 IP。建议安装 WebRTC 防护插件或使用支持 WebRTC 泄露防护的 VPN。`;
+
+        // 在泄露区域添加更多细节
+        const container = $('leak-ips');
+        leaked.forEach(ip => {
+            const item = document.createElement('div');
+            item.className = 'leak-ip-item';
+            item.style.borderColor = 'rgba(244,63,94,0.3)';
+            item.innerHTML = `<div class="leak-ip-label" style="color:var(--accent-red)">🔓 泄露的真实 IP</div><div class="leak-ip-value danger">${ip}</div>`;
+            container.appendChild(item);
+        });
+    } else {
+        webrtcEl.className = 'leak-ip-value same';
+        $('leak-status').textContent = '✅ 一致 (无泄露)';
+        $('leak-status').className = 'leak-status leak-safe';
+        $('leak-summary').textContent = 'WebRTC 检测到的 IP 与连接 IP 一致，未发现泄露。';
+    }
 }
 
-// ===== 渲染攻击者排行 =====
-function renderAttackerList(attackers) {
-    const container = document.getElementById('attacker-list');
-    if (!attackers || !attackers.length) {
-        container.innerHTML = `<div class="empty-state"><div class="icon">🎯</div><div>暂无数据</div></div>`;
+// ===== Traceroute =====
+async function runTrace() {
+    const btn = $('trace-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ 追踪中...';
+    $('trace-hops').innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-secondary)">正在追踪路由路径...</div>';
+
+    try {
+        const r = await fetch('/api/traceroute?target=' + encodeURIComponent(location.hostname));
+        const data = await r.json();
+
+        if (data.error) throw new Error(data.error);
+        renderHops(data.hops || []);
+    } catch(e) {
+        $('trace-hops').innerHTML = `<div style="text-align:center;padding:30px;color:var(--accent-red)">追踪失败: ${esc(e.message)}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '▶ 重新追踪';
+    }
+}
+
+function renderHops(hops) {
+    if (!hops.length) {
+        $('trace-hops').innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">无数据</div>';
         return;
     }
 
-    container.innerHTML = attackers.map((a, i) => {
-        const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other';
-        const types = (a.attack_types || '').split(',').filter(Boolean).slice(0, 3);
+    const maxMs = Math.max(...hops.filter(h=>h.ms>0).map(h=>h.ms), 1);
+    $('trace-hops').innerHTML = hops.map((h, i) => {
+        const isLast = i === hops.length - 1;
+        const isTimeout = h.timeout;
+        const cls = isLast ? 'hop-end' : (i === 0 ? 'hop-start' : (isTimeout ? 'hop-timeout' : 'hop-mid'));
+        const barW = isTimeout ? 0 : Math.round((h.ms / maxMs) * 100);
         return `
-            <div class="attacker-item">
-                <div style="display:flex;align-items:center;">
-                    <span class="attacker-rank ${rankClass}">${i + 1}</span>
-                    <div class="attacker-info">
-                        <div class="attacker-ip">${escapeHtml(a.source_ip)}</div>
-                        <div class="attacker-types">${types.map(t => TYPE_LABELS[t] || t).join(' · ')}</div>
-                    </div>
-                </div>
-                <div class="attacker-count">${a.count?.toLocaleString()}</div>
-            </div>
-        `;
+            <div class="hop-row">
+                <div class="hop-num ${cls}">${h.hop}</div>
+                <div class="hop-ip">${esc(h.ip || '*')}</div>
+                <div class="hop-host">${esc(h.hostname || '')}</div>
+                <div class="trace-bar-container"><div class="trace-bar" style="width:${barW}%"></div></div>
+                <div class="hop-ms">${isTimeout ? '*' : h.ms + ' ms'}</div>
+            </div>`;
     }).join('');
-}
-
-// ===== 工具函数 =====
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-function formatTime(ts) {
-    if (!ts) return '--';
-    const d = new Date(typeof ts === 'number' ? ts * 1000 : ts);
-    if (isNaN(d.getTime())) return '--';
-    const pad = n => n.toString().padStart(2, '0');
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-function formatUptime(ms) {
-    const s = Math.floor(ms / 1000);
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    if (h > 0) return `${h}h ${m}m ${sec}s`;
-    if (m > 0) return `${m}m ${sec}s`;
-    return `${sec}s`;
 }
 
 // ===== 时钟 =====
 function updateClock() {
-    const now = new Date();
-    const pad = n => n.toString().padStart(2, '0');
-    document.getElementById('clock').textContent =
-        `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    document.getElementById('uptime').textContent =
-        `运行时间: ${formatUptime(Date.now() - state.startTime)}`;
+    const n = new Date();
+    const p = x => x.toString().padStart(2,'0');
+    $('clock').textContent = `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
 }
 
-// ===== 初始化 =====
+// ===== 刷新全部 =====
+async function refreshAll() {
+    await loadVisitorInfo();
+    loadBrowserInfo();
+    checkLeak($('main-ip')?.textContent);
+}
+
+// ===== 启动 =====
 async function init() {
-    initCharts();
-    await loadAllData();
-
-    // 定时刷新
-    setInterval(loadAllData, 10000);  // 10秒刷新一次
-    setInterval(updateClock, 1000);
+    loadBrowserInfo();
     updateClock();
+    setInterval(updateClock, 1000);
+
+    const info = await loadVisitorInfo();
+    if (info?.ip) checkLeak(info.ip);
 }
 
-// 启动
 document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>

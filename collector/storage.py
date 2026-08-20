@@ -40,6 +40,24 @@ CREATE TABLE IF NOT EXISTS daily_stats (
     top_attackers TEXT DEFAULT '[]',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 文件访问事件表
+CREATE TABLE IF NOT EXISTS file_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp REAL NOT NULL,
+    time_str TEXT,
+    pathname TEXT NOT NULL,
+    is_dir INTEGER DEFAULT 0,
+    action TEXT,
+    action_label TEXT,
+    source TEXT,
+    is_sensitive INTEGER DEFAULT 0,
+    size INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_file_events_timestamp ON file_events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_file_events_pathname ON file_events(pathname);
 """
 
 
@@ -241,6 +259,90 @@ class AttackStorage:
         deleted = conn.execute(
             "DELETE FROM attacks WHERE timestamp < ?", (cutoff,)
         ).rowcount
+        conn.execute(
+            "DELETE FROM file_events WHERE timestamp < ?", (cutoff,)
+        )
         conn.commit()
         conn.close()
         return deleted
+
+    # ===== 文件事件相关方法 =====
+
+    def insert_file_event(self, event: dict) -> int:
+        """插入一条文件访问事件"""
+        with self._lock:
+            conn = self._get_conn()
+            cursor = conn.execute(
+                """INSERT INTO file_events
+                (timestamp, time_str, pathname, is_dir, action, action_label,
+                 source, is_sensitive, size)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    event.get("timestamp"),
+                    event.get("time_str"),
+                    event.get("pathname"),
+                    1 if event.get("is_dir") else 0,
+                    event.get("action"),
+                    event.get("action_label"),
+                    event.get("source"),
+                    1 if event.get("is_sensitive") else 0,
+                    event.get("size"),
+                ),
+            )
+            row_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            return row_id
+
+    def get_recent_file_events(self, limit: int = 50) -> list[dict]:
+        """获取最近的文件事件"""
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT * FROM file_events ORDER BY timestamp DESC LIMIT ?", (limit,)
+        ).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def get_file_event_stats(self, hours: int = 24) -> dict:
+        """获取文件事件统计"""
+        import time as _time
+
+        since = _time.time() - hours * 3600
+        conn = self._get_conn()
+
+        total = conn.execute(
+            "SELECT COUNT(*) FROM file_events WHERE timestamp >= ?", (since,)
+        ).fetchone()[0]
+
+        sensitive = conn.execute(
+            "SELECT COUNT(*) FROM file_events WHERE timestamp >= ? AND is_sensitive = 1",
+            (since,),
+        ).fetchone()[0]
+
+        # 按操作类型统计
+        action_rows = conn.execute(
+            """SELECT action, COUNT(*) as cnt
+               FROM file_events WHERE timestamp >= ?
+               GROUP BY action ORDER BY cnt DESC""",
+            (since,),
+        ).fetchall()
+        by_action = {r["action"] or "unknown": r["cnt"] for r in action_rows}
+
+        # 热门路径
+        path_rows = conn.execute(
+            """SELECT pathname, COUNT(*) as cnt
+               FROM file_events WHERE timestamp >= ?
+               GROUP BY pathname ORDER BY cnt DESC LIMIT 20""",
+            (since,),
+        ).fetchall()
+        top_paths = [{"path": r["pathname"], "count": r["cnt"]} for r in path_rows]
+
+        conn.close()
+
+        return {
+            "period_hours": hours,
+            "total_events": total,
+            "sensitive_events": sensitive,
+            "by_action": by_action,
+            "top_paths": top_paths,
+        }
